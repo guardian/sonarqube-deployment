@@ -5,6 +5,10 @@ Parameters:
     Type: String
     Description: VpcId of your existing Virtual Private Cloud (VPC)
     Default: vpc-e6e00183
+  Subnets:
+    Type: CommaDelimitedList
+    Description: The list of SubnetIds in your Virtual Private Cloud (VPC)
+    Default: subnet-cb91ae8d, subnet-a7b74ac2, subnet-179e8063
   Stack:
     Description: Applied directly as a tag
     Type: String
@@ -25,6 +29,130 @@ Parameters:
     Description: Office IP range
     Type: String
 Resources:
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: !GetAZs
+      VPCZoneIdentifier: !Ref Subnets
+      LaunchConfigurationName: !Ref LaunchConfig
+      MinSize: 1
+      MaxSize: 2
+      TargetGroupARNs:
+        - !Ref TargetGroup
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      Tags:
+        - Key: Stack
+          Value: !Ref Stack
+          PropagateAtLaunch: true
+        - Key: App
+          Value: !Ref App
+          PropagateAtLaunch: true
+        - Key: Stage
+          Value: !Ref Stage
+          PropagateAtLaunch: true
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref AMI
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      InstanceType: t3.small
+      IamInstanceProfile: !Ref InstanceProfile
+      AssociatePublicIpAddress: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -ev
+          echo "hello!"
+
+  AppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+      - !Sub arn:aws:iam::${AWS::AccountId}:policy/guardian-ec2-role-for-ssm
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref AppRole
+
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${Stack}-${Stage}-${App}
+      Subnets: !Ref Subnets
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Tags:
+        - Key: Stack
+          Value: !Ref Stack
+        - Key: App
+          Value: !Ref App
+        - Key: Stage
+          Value: !Ref Stage
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: TargetGroup
+      LoadBalancerArn:
+        Ref: ElasticLoadBalancer
+      Certificates: 
+        - CertificateArn: arn:aws:acm:eu-west-1:865473395570:certificate/2c2a72a2-a0d6-4ffa-b8a1-8a7916000515
+      Port: 443
+      Protocol: HTTPS
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${Stack}-${Stage}-${App}
+      Port: 9000
+      Protocol: HTTP
+      VpcId:
+        Ref: VpcId
+      # HealthCheckIntervalSeconds: 10
+      # HealthCheckPath: /_healthcheck
+      # HealthCheckPort: 9233
+      # HealthCheckProtocol: HTTP
+      # HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: 45 # only connection drains for 45 seconds (rather than default of 300)
+    DependsOn:
+    - ElasticLoadBalancer
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permit incoming HTTPS access on port 443, egress to port 9233
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref OfficeCIDR
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          ToPort: 9000
+          FromPort: 9000
+          CidrIp: 0.0.0.0/0
+
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -39,60 +167,12 @@ Resources:
           FromPort: 9000
           ToPort: 9000
           CidrIp: !Ref OfficeCIDR
+        - IpProtocol: tcp
+          FromPort: 9000
+          ToPort: 9000
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0  
-  SonarQubeEC2Instance:
-    Type: AWS::EC2::Instance
-    Properties:
-      # Affinity: String
-      AvailabilityZone: eu-west-1c
-      # BlockDeviceMappings: 
-      #   - EC2 Block Device Mapping
-      # CreditSpecification: CreditSpecification
-      # DisableApiTermination: Boolean
-      EbsOptimized: true
-      # ElasticGpuSpecifications: [ ElasticGpuSpecification, ... ]
-      # ElasticInferenceAccelerators: 
-      #   - ElasticInferenceAccelerator
-      # HostId: String
-      # IamInstanceProfile: String
-      ImageId: !Ref AMI
-      # InstanceInitiatedShutdownBehavior: String
-      InstanceType: t3.small
-      # Ipv6AddressCount: Integer
-      # Ipv6Addresses:
-      #   - IPv6 Address Type
-      # KernelId: String
-      KeyName: thalia-sonarqube-CODE
-      # LaunchTemplate: LaunchTemplateSpecification
-      # LicenseSpecifications: 
-      #   - LicenseSpecification
-      # Monitoring: Boolean
-      # NetworkInterfaces: 
-      #   - EC2 Network Interface
-      # PlacementGroupName: String
-      # PrivateIpAddress: String
-      # RamdiskId: String
-      SecurityGroupIds: 
-        - !Ref InstanceSecurityGroup
-      # SecurityGroups: 
-      #     - !Ref InstanceSecurityGroup
-      # SourceDestCheck: Boolean
-      # SsmAssociations: 
-      #   - SSMAssociation
-      SubnetId: subnet-179e8063
-      Tags: 
-        - Key: Stack
-          Value: !Ref Stack
-        - Key: App
-          Value: !Ref App
-        - Key: Stage
-          Value: !Ref Stage
-      Tenancy: default
-      # UserData: String
-      # Volumes: 
-      #   - EC2 MountPoint
-      # AdditionalInfo: String
+          CidrIp: 0.0.0.0/0
