@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -e
+
+# Installing yarn
+
+YARN_VERSION="1.7.0"
+YARN_LOCATION="$(pwd)/tools/${YARN_VERSION}"
+
+if [ ! -d "$YARN_LOCATION" ]; then
+	mkdir -p ${YARN_LOCATION}
+	cd ${YARN_LOCATION}/
+	wget -qO- https://github.com/yarnpkg/yarn/releases/download/v${YARN_VERSION}/yarn-v${YARN_VERSION}.tar.gz | tar zvx
+	cd ../..
+fi
+
+export PATH="$PATH:$YARN_LOCATION/yarn-v$YARN_VERSION/bin"
+
+# Installing packages via yarn
+
+yarn install
+
+# push to riffraff
+
+export TEAMCITY_BRANCH=${TEAMCITY_BRANCH/\/merge/PR merge} # workaround for .split("/").slice(-1)[0] in 'node-riffraff-artefact'
+
+yarn riffraff

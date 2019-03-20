@@ -1,0 +1,15 @@
+regions:
+- eu-west-1
+stacks:
+- support
+deployments:
+  sonarqube-cloudformation:
+    type: cloud-formation
+    app: sonarqube
+    parameters:
+      templatePath: cloudformation/sonarqube-instance.yaml
+      amiTags:
+        Recipe: xenial-membership
+        AmigoStage: PROD
+      amiEncrypted: true
+  

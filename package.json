@@ -1,0 +1,15 @@
+{
+    "name": "sonarqube",
+    "version": "1.0.0",
+    "scripts": {
+      "riffraff": "VERBOSE=true ARTEFACT_PATH=$(pwd) riffraff-artefact"
+    },
+    "cloudformation": "./cloudformation/sonarqube-instance.yaml",
+    "riffraffFile": "./riff-raff.yaml",
+    "uploadArtefact": true,
+    "projectName": "support:sonarqube",
+    "devDependencies": {
+      "node-riffraff-artefact": "^2.0.1"
+    },
+    "license": "UNLICENSED"
+  }
