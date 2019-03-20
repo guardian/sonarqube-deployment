@@ -63,9 +63,16 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -ev
+          aws --region ${AWS::Region} s3 cp s3://membership-dist/${Stack}/${Stage}/${App}/sonarqube.tgz /tmp
+
+          tar -xvzf /tmp/sonarqube.tgz
+
           wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-7.6.zip
 
           unzip sonarqube-7.6.zip 
+
+          rm sonarqube-7.6/conf/sonar.properties 
+          cp dist/sonar.properties sonarqube-7.6/conf/
           
           sonarqube-7.6/bin/linux-x86-64/sonar.sh console
 
@@ -124,7 +131,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       Name: !Sub ${Stack}-${Stage}-${App}
-      Port: 9000
+      Port: 9521
       Protocol: HTTP
       VpcId:
         Ref: VpcId
@@ -153,8 +160,8 @@ Resources:
           CidrIp: !Ref OfficeCIDR
       SecurityGroupEgress:
         - IpProtocol: tcp
-          ToPort: 9000
-          FromPort: 9000
+          ToPort: 9521
+          FromPort: 9521
           CidrIp: 0.0.0.0/0
 
   InstanceSecurityGroup:
@@ -168,12 +175,12 @@ Resources:
           ToPort: 22
           CidrIp: !Ref OfficeCIDR
         - IpProtocol: tcp
-          FromPort: 9000
-          ToPort: 9000
+          FromPort: 9521
+          ToPort: 9521
           CidrIp: !Ref OfficeCIDR
         - IpProtocol: tcp
-          FromPort: 9000
-          ToPort: 9000
+          FromPort: 9521
+          ToPort: 9521
           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
       SecurityGroupEgress:
         - IpProtocol: tcp

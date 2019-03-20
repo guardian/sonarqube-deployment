@@ -7,6 +7,7 @@
     "cloudformation": "./cloudformation/sonarqube-instance.yaml",
     "riffraffFile": "./riff-raff.yaml",
     "uploadArtefact": true,
+    "buildDir": "dist",
     "projectName": "support:sonarqube",
     "devDependencies": {
       "node-riffraff-artefact": "^2.0.1"
