@@ -5,10 +5,6 @@ Parameters:
     Type: String
     Description: VpcId of your existing Virtual Private Cloud (VPC)
     Default: vpc-e6e00183
-  Subnets:
-    Type: CommaDelimitedList
-    Description: The list of SubnetIds in your Virtual Private Cloud (VPC)
-    Default: subnet-cb91ae8d, subnet-a7b74ac2, subnet-179e8063
   Stack:
     Description: Applied directly as a tag
     Type: String
@@ -52,7 +48,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       # Affinity: String
-      AvailabilityZone: !GetAZs
+      AvailabilityZone: eu-west-1c
       # BlockDeviceMappings: 
       #   - EC2 Block Device Mapping
       # CreditSpecification: CreditSpecification
@@ -80,24 +76,21 @@ Resources:
       # PlacementGroupName: String
       # PrivateIpAddress: String
       # RamdiskId: String
-      # SecurityGroupIds: 
-      #   - String        
-      SecurityGroups: 
-          - !Ref InstanceSecurityGroup
+      SecurityGroupIds: 
+        - !Ref InstanceSecurityGroup
+      # SecurityGroups: 
+      #     - !Ref InstanceSecurityGroup
       # SourceDestCheck: Boolean
       # SsmAssociations: 
       #   - SSMAssociation
-      SubnetId: !Ref Subnets
+      SubnetId: subnet-179e8063
       Tags: 
         - Key: Stack
           Value: !Ref Stack
-          PropagateAtLaunch: true
         - Key: App
           Value: !Ref App
-          PropagateAtLaunch: true
         - Key: Stage
           Value: !Ref Stage
-          PropagateAtLaunch: true
       Tenancy: default
       # UserData: String
       # Volumes: 
