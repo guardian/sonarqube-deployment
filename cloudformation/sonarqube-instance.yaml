@@ -63,7 +63,11 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -ev
-          echo "hello!"
+          wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-7.6.zip
+
+          unzip sonarqube-7.6.zip 
+          
+          sonarqube-7.6/bin/linux-x86-64/sonar.sh console
 
   AppRole:
     Type: AWS::IAM::Role
