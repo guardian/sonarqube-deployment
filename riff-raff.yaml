@@ -12,4 +12,8 @@ deployments:
         Recipe: xenial-membership
         AmigoStage: PROD
       amiEncrypted: true
-  
+  sonarqube:
+    type: autoscaling
+    dependencies: [sonarqube-cloudformation]
+    parameters:
+      bucket: membership-dist
